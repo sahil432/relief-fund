@@ -1,0 +1,93 @@
+<?php
+	function relief_form_schema(){
+		$schema['reilef_fund'] = array(
+			'description'=>t('table created for Relief fund'),
+			'fields' => array(
+				'id'=>array(
+					'type'=>'serial',
+					'not null'=>TRUE
+				),
+				'name' => array(
+					'type' => 'varchar',
+					'length' => 100,
+					'not null' => TRUE
+				),
+				'father_name' => array(
+					'type' => 'varchar',
+					'length' => 50,
+					'not null' => TRUE
+				),
+				'mother_name' => array(
+					'type' => 'varchar',
+					'length' => 50,
+					'not null' => TRUE
+				),
+				'block' => array(
+					'type' => 'varchar',
+					'length' => 50,
+					'not null' => TRUE
+				),
+				'district' => array(
+					'type' => 'varchar',
+					'length' => 50,
+					'not null' => TRUE
+				),
+				'mobileno' => array(
+					'type' => 'varchar',
+					'length' => 10,
+					'not null' => TRUE
+				),
+				
+				'description' => array(
+					'type' => 'varchar',
+					'length' => 200,
+					'not null' => TRUE
+				),
+				
+				'fid' => array(
+					'type' => 'int',
+					'not null' => TRUE
+				),
+				
+				'fund_allocated' => array(
+					'type' => 'varchar',
+					'length' => 100,
+					'not null' => False
+				),
+				'status' => array(
+					'type' => 'varchar',
+					'length' => 100,
+					'not null' => True,
+					'default' => '0'
+				),
+				'check_status' => array(
+					'type' => 'varchar',
+					'length' => 100,
+					'not null' => True,
+					'default' => '0'
+				),
+				'otp' => array(
+					'type' => 'varchar',
+					'length' => 50,
+					'not null' => False
+				),
+				'location' => array(
+					'type' => 'varchar',
+					'length' => 100,
+					'not null' => False
+				),
+				'check_date' => array(
+					'type' => 'varchar',
+					'mysql_type' => 'datetime',
+					'length' => 100,
+					'not null' => False
+				),
+				
+			),
+			'unique keys' => array(
+    'mobileno' => array('mobileno'),
+  ),
+			'primary key' => array('id'),
+		);
+		return $schema;
+   }

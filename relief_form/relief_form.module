@@ -1,0 +1,796 @@
+<?php
+
+/* function relief_form_block_info(){
+	
+	$blocks['relief_fund_block']=array('info'=>'Relief Results');
+	return $blocks;
+}
+function relief_form_block_view($delta=''){
+$block = array();
+if ($delta == 'relief_fund_block') {
+$block = array(
+'subject' => t('Relief funds'),
+'content' => relief_fund_blockfun() //Call page function with the query,
+); //cause i want to dipslay the table in page and a block
+}
+return $block;
+}
+function relief_fund_blockfun(){
+	$b=array('S No.','Name','Mobile','Email','Description','Fund Allocated');
+	$row=array();
+	$query = db_select('reilef_fund', 'n')
+				->extend('PagerDefault')    
+				->limit(4)                
+				->extend('TableSort')        
+                ->orderByHeader($b)
+				->fields ('n', array (
+                'id',
+                'name',
+                'mobileno',
+                'email',
+                'description','fund_allocated'
+            )
+			
+			)
+			->condition('n.fund_allocated', '', '!=')
+			//->isNotNull('n.fund_allocated')
+			; 
+	
+	
+	$result = $query
+            ->execute();
+	
+$i=1;
+	foreach($result as $a){
+$row[]=array(		
+		$i,
+		$a->name,
+		$a->mobileno,
+		$a->email,
+		$a->description,
+		
+		$a->fund_allocated
+		
+		);
+	$i++;
+	}
+	
+	$html= theme('table',array('header'=>$b,'rows'=>$row));
+	$html .= theme('pager',
+            array(
+                'tags' => array()
+            )
+        );
+		
+		return $html;
+
+	
+	
+}
+
+ */
+
+function relief_form_permission() {
+  return array(
+    'Relief Fund' => array(
+      'title' => t(' Relief Front Page'),
+      'description' => t('Perform administration tasks for relief module.'),
+    ),
+	
+	'permission for relief fund results' => array(
+      'title' => t('admin pages'),
+      'description' => t('Perform administratio.'),
+	  
+    ),
+	'administer relief module' => array(
+      'title' => t('second admin page'),
+      'description' => t('Perform administratio.'),
+	  
+    ),
+	
+  );
+  
+  
+}
+function relief_form_menu(){
+	$items['relief_fund']=array(    
+	'title'=>'Relief Fund Form',   
+	'page callback'=>'drupal_get_form',  
+	'page arguments'=>array('Relief_form'), 
+	'access arguments'=>array('Relief Fund')
+	);
+	
+	$items['checkstatus']=array(    
+	'title'=>'Check Status ',   
+	'page callback'=>'drupal_get_form',
+    'page arguments'=>array('check_status'),
+	'access arguments'=>array('Relief Fund')
+	);
+	$items['fund_results']=array(    
+	'title'=>'Funds Result',   
+	'page callback'=>'fund_result',
+    'access arguments'=>array('permission for relief fund results ')	
+	
+	);
+	$items['verifyotp/%']=array(    
+	'title'=>'OTP Verification',   
+	'page callback'=>'drupal_get_form',
+    'page arguments'=>array('verify_otp'),
+	'access arguments'=>array('Relief Fund')
+	);
+	
+	$items['allocate_fund/%']=array(    
+	'title'=>'Allocate Fund',   
+	'page callback'=>'drupal_get_form',  
+	'page arguments'=>array('allocate_fund'),  
+	'access arguments'=>array('administer relief module'), 
+	
+	);
+	
+$items['verifyaccount']=array(    
+	'title'=>'Verify Account',   
+	'page callback'=>'drupal_get_form',  
+	'page arguments'=>array('verify_account'),  
+	'access arguments'=>array('Relief Fund'), 
+	
+	);
+	
+	
+	
+	return $items;
+}
+
+
+function check_status($form,&$form_state)
+{
+	
+	global $base_url;
+
+	 $form['link']['#prefix'] = '<a href="'.$base_url.'/relief_fund" class="backn">Back</a>';  
+	$form['msg'] = array(
+
+  '#markup' => variable_get('msg',
+t('<b>Check Your Status</b>')),
+
+);			
+	$form['mobileno']=array(
+	'#title'=>t('Enter your Mobile Number here '), 
+	'#type'=>'textfield',
+	'#size'=>60,
+	'#required'=>TRUE,
+	'#maxlength'=>10
+	
+	);
+	 
+	$form['submit']=array(
+	'#type'=>'submit', 
+	'#value'=>'save',
+	);
+	return $form;
+}
+
+
+function check_status_validate($form,&$form_state)
+{
+		$mobileno=$form_state['values']['mobileno'];
+}
+function verify_account($form,&$form_state)
+{
+	
+	global $base_url;
+
+	 $form['link']['#prefix'] = '<a href="'.$base_url.'/relief_fund" class="backn">Back</a>';  
+$form['msg'] = array(
+
+  '#markup' => variable_get('msg',
+t('<b>Welcome <span class="sname">'.$name.'</span> Please Verify Your Account </b>')),
+
+);			
+	$form['mobileno']=array(
+	'#title'=>t('Enter your Mobile Number here '), 
+	'#type'=>'textfield',
+	'#size'=>60,
+	'#required'=>TRUE,
+	'#maxlength'=>10
+	);
+	
+	$form['submit']=array(
+	'#type'=>'submit', 
+	'#value'=>'save',
+	);
+	
+	return $form;
+	
+}
+function verify_account_validate($form,&$form_state){
+
+	$mobileno=$form_state['values']['mobileno'];
+	 if(!preg_match('/^[0-9]*$/',$mobileno))
+    {
+    form_set_error('mobileno', t('This is Invalid Mobile Number '));
+    }
+	if(strlen($mobileno) !=10){
+		
+		form_set_error('mobileno', t('This is invalid Mobile number'));
+	}
+	
+	
+	
+	
+}
+function verify_account_submit($form,&$form_state)
+{
+	$mobileno=$form_state['values']['mobileno'];
+	
+	$form_state['redirect'] = 'verifyotp/'.$mobileno;
+	
+	
+}
+
+function verify_otp($form,&$form_state)
+{
+	global $base_url;
+
+	 $form['link']['#prefix'] = '<a href="'.$base_url.'/relief_fund" class="backn">Back</a>';          
+     
+	
+	 $mobileNumber=arg(1);
+	$result = db_select('reilef_fund', 'n')
+            
+			->condition('mobileno',$mobileNumber,'=')
+			->fields('n')
+            ->execute()
+			->fetchAll(); 
+	//print_r($result);
+	
+	$name=$result[0]->name;
+
+	if(empty($name)){
+	$url=$base_url.'/relief_fund';
+		
+	 drupal_goto($url, array('external' => TRUE));
+		
+	
+	
+	}
+	
+	if($result[0]->status == 1)
+	{
+		drupal_set_message("Verified ");
+	}
+	
+		elseif(!empty($name))
+		{
+			$otp=$_SERVER['REQUEST_TIME'];
+			
+			
+			$num_updated = db_update('reilef_fund')
+  ->fields(array(
+    'otp' => $otp
+       ))
+  ->condition('mobileno',$mobileNumber ,'=')
+  ->execute();
+			
+			
+			//$authKey = "165353A7kIymL559690490";
+
+//Multiple mobiles numbers separated by comma
+
+
+//Sender ID,While using route4 sender id should be 6 characters long.
+$senderId = "CMOJKH";
+
+//Your message to send, Add URL encoding here.
+$message = urlencode("".$otp." is your CMO Jharkhand Verification Code ");
+
+//Define route 
+$route = 4;
+//Prepare you post parameters
+$postData = array(
+    'authkey' => $authKey,
+    'mobiles' => $mobileNumber,
+    'message' => $message,
+    'sender' => $senderId,
+    'route' => $route
+);
+
+//API URL
+$url="http://api.msg91.com/api/sendhttp.php";
+
+// init the resource
+$ch = curl_init();
+curl_setopt_array($ch, array(
+    CURLOPT_URL => $url,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => $postData
+    //,CURLOPT_FOLLOWLOCATION => true
+));
+
+
+//Ignore SSL certificate verification
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+
+
+//get response
+$output = curl_exec($ch);
+
+//Print error if any
+if(curl_errno($ch))
+{
+    echo 'error:' . curl_error($ch);
+}
+
+curl_close($ch);
+	  
+	  
+	  
+
+			
+	$form['msg'] = array(
+
+  '#markup' => variable_get('msg',
+t('<b>Welcome <span class="sname">'.$name.'</span>Please Verify Your Account </b>')),
+
+);			
+	$form['otp']=array(
+	'#title'=>t('Enter your otp here '), 
+	'#type'=>'textfield',
+	'#size'=>60,
+	'#maxlength'=>10
+	);
+	
+	$form['submit']=array(
+	'#type'=>'submit', 
+	'#value'=>'save',
+	);	
+				
+	
+				}
+		else
+		{
+			 $form_state['redirect'] = 'relief_fund';
+			
+			
+		}
+	return $form;
+}
+
+function verify_otp_validate($form,&$form_state){
+
+	$otp=$form_state['values']['otp'];
+	 if(!preg_match('/^[0-9]*$/',$otp))
+    {
+    form_set_error('otp', t('This is Invalid OTP '));
+    }
+}
+function verify_otp_submit($form,&$form_state)
+{
+	 $mobile_number=arg(1);
+	 $otp=$form_state['values']['otp'];
+	 
+	 $result = db_select('reilef_fund', 'n')
+            
+			->condition('mobileno',$mobile_number ,'=')
+			->fields('n',array('otp'))
+            ->execute()
+			->fetchAll();
+		
+	
+	//print_r($result);
+	
+	if($result[0]->otp == $otp){
+		$num_updated = db_update('reilef_fund')
+  ->fields(array(
+    'status' => 1
+       ))
+  ->condition('mobileno',$mobile_number ,'=')
+  ->execute();
+	drupal_set_message("Thanks For Verification Now you can Track your Status");
+			}
+	else{
+		
+		drupal_set_message("Invalid OTP",'error');
+	}
+}
+function allocate_fund($form,&$form_state){
+ $a=arg(1);
+	$result = db_query("SELECT * FROM {reilef_fund} where id=$a");
+	foreach($result as $ro){
+		
+		
+		$rq[]=array(
+		
+		$ro->id,
+		$ro->name,
+		$ro->mobileno,
+		$ro->description,
+		$ro->fund_allocated
+		
+		);
+		}
+	
+
+	$form['id']=array(
+	'#title'=>t('id'), 
+	'#type'=>'hidden',
+	'#required'=>TRUE,
+	'#size'=>60,
+	'#maxlength'=>100,
+	'#default_value' => $rq[0][0],
+	
+
+	);
+$form['name']=array(
+	'#title'=>t('Name'), 
+	'#type'=>'textfield',
+	
+	'#size'=>60,
+	'#maxlength'=>100,
+	'#default_value' => $rq[0][1],
+	'#disabled' => TRUE
+
+	);
+	
+	
+	$form['mobileno']=array(
+	'#title'=>'Mobile No.',
+	'#type'=>'textfield',
+	
+	'#size'=>60,
+	'#maxlength'=>10,
+	'#default_value' => $rq[0][2],
+	'#disabled' => TRUE
+
+	
+	);
+	
+	
+	$form['description']=array(
+	'#title'=>'Description',
+	'#type'=>'textarea',
+	'#default_value' => $rq[0][4], 
+   '#disabled' => TRUE
+
+	);
+	  
+$form['datetime'] = array(
+    '#type' => 'date_popup',
+	'#date_format' => 'd/m/Y',
+	
+    );
+	$form['location']=array(
+	'#title'=>' Location ',
+	'#type'=>'textfield',
+	'#size'=>260,
+	);
+
+	  $form['fund_allocated']=array(
+	'#title'=>'Allocate Fund',
+	'#type'=>'textfield',
+	 '#default_value' => $rq[0][5]
+
+
+	);
+ 
+	$form['submit']=array(
+	'#type'=>'submit', 
+	'#value'=>'save',
+	);
+	return $form;
+
+}
+
+
+function allocate_fund_validate($form,&$form_state){
+
+	$fund=$form_state['values']['fund_allocated'];
+	 if(!preg_match('/^[0-9a-zA-Z ]*$/',$fund))
+    {
+    form_set_error('fund_allocated', t('this is invalid '));
+    }
+	
+}
+
+function allocate_fund_submit($form,&$form_state){
+	
+$id1=$form_state['values']['id'];
+	  $num_updated = db_update('reilef_fund')
+  ->fields(array(
+    'name' => $form_state['values']['name'],
+        'check_date' => $form_state['values']['datetime'],
+		'location' => $form_state['values']['location'],
+        'mobileno' => $form_state['values']['mobileno'],
+        'description'=>$form_state['values']['description'],
+		'fund_allocated'=>$form_state['values']['fund_allocated'],
+    
+  ))
+  ->condition('id', $id1)
+  ->execute();
+    drupal_set_message("successfully saved details.");
+$form_state['redirect'] = 'fund_results';
+}
+
+
+function Relief_form($form,&$form_state){
+	global $user;
+	global $base_url;
+	if($user->uid ==1){
+	 $form['link']['#prefix'] = '<a href="'.$base_url.'/fund_results">Check Results</a>';          
+     
+	}
+	$form['link1']['#prefix'] = '<a href="'.$base_url.'/verifyaccount">Verify Account</a>';  
+$form['link2']['#prefix'] = '<a href="'.$base_url.'/checkstatus">Check Status</a>';	
+	$form['name']=array(
+	'#title'=>t('Name'), //description of form elements, here t function is for transalation of language
+	'#type'=>'textfield',
+	'#required'=>TRUE,
+	'#size'=>60,
+	'#maxlength'=>100,
+	);
+	$form['father_name']=array(
+	'#title'=>"Father's Name",
+	'#type'=>'textfield',
+	'#size'=>60,
+	'#maxlength'=>60,
+	'#required'=>TRUE,
+	);
+	$form['mother_name']=array(
+	'#title'=>"Mother's Name",
+	'#type'=>'textfield',
+	'#size'=>60,
+	'#maxlength'=>60,
+	'#required'=>TRUE,
+	);
+	$form['district']=array(
+	'#title'=>"District",
+	'#type'=>'textfield',
+	'#size'=>60,
+	'#maxlength'=>60,
+	'#required'=>TRUE,
+	);
+
+	$form['block']=array(
+	'#title'=>"Block",
+	'#type'=>'textfield',
+	'#size'=>60,
+	'#maxlength'=>60,
+	'#required'=>TRUE,
+	);
+	
+		
+	
+	
+	$form['mobileno']=array(
+	'#title'=>'Mobile No.',
+	'#type'=>'textfield',
+	'#required'=>TRUE,
+	'#size'=>60,
+	'#maxlength'=>10,
+	
+	);
+	
+	   $form['description'] = array(
+       '#type' => 'textarea',
+       '#title' => t('Description'),
+		'#size'=>560,
+   );
+   
+  
+   $form['attachments'] = array(
+    '#title' => t('Add Attachment'),
+	
+    '#type' => 'managed_file',
+   
+    '#progress_indicator' => 'bar',
+    '#upload_location' => 'public://',
+	"#upload_validators"  => array("file_validate_extensions" => array("pdf docx")),
+  );
+	$form['submit']=array(
+	'#type'=>'submit', 
+	'#value'=>'save',
+	);
+	return $form;
+}
+
+
+function Relief_form_validate($form,&$form_state){
+	$name = $form_state['values']['name'];
+	$father=$form_state['values']['father_name'];
+	$mother=$form_state['values']['mother_name'];
+	if (!preg_match("/^[a-zA-Z ]*$/",$mother)) {
+  form_set_error('mother_name', t('Your Mother Name contains invalid characters. Only letters are allowed!','error'));
+}
+if (!preg_match("/^[a-zA-Z ]*$/",$name)) {
+  form_set_error('name', t('Your Name contains invalid characters. Only letters are allowed!'));
+}
+if (!preg_match("/^[a-zA-Z ]*$/",$father)) {
+  form_set_error('father_name', t('Your Father name contains invalid characters. Only letters are allowed!'));
+}
+/* 	$email=$form_state['values']['email'];
+	if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+	form_set_error('email', t('this is invalid email address'));
+} */
+	$mobile=$form_state['values']['mobileno'];
+	if(strlen($mobile) !=10){
+		
+		form_set_error('mobileno', t('this is invalid phone number'));
+	}
+	 if(!preg_match('/^[0-9]*$/',$mobile))
+    {
+    form_set_error('mobileno', t('this is invalid phone number'));
+    }
+	
+}
+
+function Relief_form_submit($form,&$form_state){
+	
+	$result = db_select('reilef_fund', 'n')
+            
+			->condition('mobileno',$form_state['values']['mobileno'] ,'=')
+			->fields('n')
+            ->execute();
+   $num_of_results = $result->rowCount();
+	
+if($num_of_results > 0){
+	    drupal_set_message("Mobile Number Already Exist",'error');
+	
+	
+}
+else{
+	
+	if(!empty($form_state['values']['attachments'])){
+	$file=file_load($form_state['values']['attachments']);
+	$file->status = FILE_STATUS_PERMANENT;
+        file_save($file);
+		file_usage_add($file, 'relief_form', 'view', $form_state['values']['attachments']);
+	}
+		db_insert('reilef_fund')
+      ->fields(array(
+        'name' => $form_state['values']['name'],
+		'father_name'=>$form_state['values']['father_name'],
+        'mother_name' => $form_state['values']['mother_name'],
+		'district' => $form_state['values']['district'],
+		'block' => $form_state['values']['block'],
+        'mobileno' => trim($form_state['values']['mobileno']),
+        'description'=>$form_state['values']['description'],
+		'fid'=>$form_state['values']['attachments'],
+		'otp'=> $otp
+      ))->execute();
+
+	  drupal_set_message("successfully saved details.");
+$form_state['redirect'] = 'verifyotp/'.$form_state['values']['mobileno'];
+}
+}
+
+/*
+------------------------------------------------------------------------
+-----------------------------------------------------------------------
+Reterive form values 
+---------------------------------------------------------------
+*/
+
+
+
+
+
+
+function fund_result(){
+
+
+global $base_url;
+	$b=array('S No.','Name','Mobile','Block','District','Fund Allocate','Verification Status','Check Collect Date','Check Collect Location  ','Fund Status','Attachment','Action');
+	$row=array();
+
+
+$mobilee=$_GET['mobile'];
+if(empty($mobilee)){
+	$query = db_select('reilef_fund', 'n')
+              
+            ->extend('PagerDefault')    
+                ->limit(40)                
+            ->extend('TableSort')        
+                ->orderByHeader($b)
+            ->fields ('n', array (
+                'id',
+                'name',
+				'mobileno',
+                'block',
+                'district',
+				'fund_allocated',
+				'check_date',
+				'location',
+                'status',
+				'fid',
+				'check_status'
+            )); 
+	$result = $query
+            ->execute();
+}else{
+	
+	
+	
+	
+	$query = db_select('reilef_fund', 'n')
+              
+            ->extend('PagerDefault')    
+                ->limit(40)                
+            ->extend('TableSort')        
+                ->orderByHeader($b)
+            ->fields ('n', array (
+                'id',
+                'name',
+				'mobileno',
+                'block',
+                'district',
+				'fund_allocated',
+				'check_date',
+				'location',
+                'status',
+				'fid',
+				'check_status'
+            ))
+			->condition('mobileno',$mobilee,'='); 
+	$result = $query
+            ->execute();
+}
+	
+	
+
+			$wa=$_GET['page'];
+	
+$i=$wa*4+1;
+	foreach($result as $a){
+		if($a->fid == 0){
+			
+			$file='NO file Attached';
+			
+		}else{
+			
+			$file1=file_load($a->fid);
+			$files=$file1->uri;
+			$file=file_create_url($files);
+		}
+		
+		$date=date('d/m/y',strtotime($a->check_date));
+$row[]=array(		
+		$i,
+		$a->name,
+		$a->mobileno,
+		$a->block,
+		$a->district,
+		$a->fund_allocated,
+		$a->status == 0 ? "Not Verified" : "Verified",
+		$date,
+		$a->location,
+		$a->check_status == 0 ? "Not Processed" : "Fund Allocated" ,
+		$a->fid != 0 ? "<a href='{$file}' target='_blank'>" . t('Download') . "</a>" : $file,
+		"<a href='allocate_fund/{$a->id}'>" . t('Allocate') . "</a>"
+			);
+
+	
+		
+
+$i++;
+	}
+	$html= '<form class="mobform" action="" method="get">Enter Your Mobile Number :-
+	<input type="number" name="mobile" id ="mobile_no" oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);" type = "number" maxlength = "10">
+	
+	<input type="submit" value="Search">
+	</form>';
+	
+	
+	
+	$html.= theme('table',array('header'=>$b,'rows'=>$row));
+	$html .= theme('pager',
+            array(
+                'tags' => array()
+            )
+        );
+		
+		$html.='<a href="'.$base_url.'/relief_fund" class="backn">Back</a>';
+		return $html;
+	
+}
+
