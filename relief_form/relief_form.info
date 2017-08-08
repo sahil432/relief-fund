@@ -1,4 +1,4 @@
 name = relief_form
 description = creates a relief fund form
 core = 7.x
-scripts[] = relief_form.js
+

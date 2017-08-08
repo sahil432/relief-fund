@@ -134,12 +134,59 @@ $items['verifyaccount']=array(
 	'access arguments'=>array('Relief Fund'), 
 	
 	);
+	$items['status_check/%']=array(    
+	'title'=>'Status Check',   
+	'page callback'=>array('status_check'),
+	'access arguments'=>array('Relief Fund'), 
+	
+	);
+	
 	
 	
 	
 	return $items;
 }
+function status_check()
+{$mobile=arg(1);
+global $base_url;
+	$url=$base_url.'/checkstatus';
+$result1 = db_select('reilef_fund', 'n')
+            ->fields('n')
+			->condition('mobileno',$mobile,'=')
+            ->execute();
+   $num_of_results = $result1->rowCount();
+	$records=$result1->fetchAll();
+	
+	if($num_of_results > 0)
+	{
+		if($records[0]->check_status == 0){
+	
+	
+	$html='<div class="statussection">
+	<h3>Status Pending</h3>
+	<a href="'.$url.'">Back</a>
+	</div>';
+		}
+		else{
+			
+			$html='<div class="statussection">
+	<h3>Congratulation !! Fund Approved
+	<br> Collect your check from '.$records[0]->location.' on '.date('d/M/Y',strtotime($records[0]->check_date)).'</h3>
+	<a href="'.$url.'">Back</a>
+	</div>';
+			
+		}
+	return $html;
+	}
+	else
+	{
+		
+		return drupal_set_message("Mobile Number Not Registered",'error');
+		
+	}
 
+	
+} 
 
 function check_status($form,&$form_state)
 {
@@ -173,6 +220,27 @@ t('<b>Check Your Status</b>')),
 function check_status_validate($form,&$form_state)
 {
 		$mobileno=$form_state['values']['mobileno'];
+		
+		if(!preg_match('/^[0-9]*$/',$mobileno))
+    {
+    form_set_error('mobileno', t('This is Invalid Mobile Number '));
+    }
+	if(strlen($mobileno) !=10){
+		
+		form_set_error('mobileno', t('This is invalid Mobile number'));
+	}
+		
+		
+		
+		
+}
+function check_status_submit($form,&$form_state)
+{global $base_url;
+	 $mobileno=$form_state['values']['mobileno'];
+	
+	$url=$base_url.'/status_check/'.$mobileno;
+	 drupal_goto($url, array('external' => TRUE));
+	
 }
 function verify_account($form,&$form_state)
 {
@@ -406,7 +474,10 @@ function allocate_fund($form,&$form_state){
 		$ro->name,
 		$ro->mobileno,
 		$ro->description,
-		$ro->fund_allocated
+		$ro->fund_allocated,
+		$ro->location,
+		$ro->check_date,
+	
 		
 		);
 		}
@@ -450,7 +521,7 @@ $form['name']=array(
 	$form['description']=array(
 	'#title'=>'Description',
 	'#type'=>'textarea',
-	'#default_value' => $rq[0][4], 
+	'#default_value' => $rq[0][3], 
    '#disabled' => TRUE
 
 	);
@@ -458,18 +529,20 @@ $form['name']=array(
 $form['datetime'] = array(
     '#type' => 'date_popup',
 	'#date_format' => 'd/m/Y',
+	'#default_value' => $rq[0][6],
 	
     );
 	$form['location']=array(
 	'#title'=>' Location ',
 	'#type'=>'textfield',
+	'#default_value' => $rq[0][5],
 	'#size'=>260,
 	);
 
 	  $form['fund_allocated']=array(
 	'#title'=>'Allocate Fund',
 	'#type'=>'textfield',
-	 '#default_value' => $rq[0][5]
+	 '#default_value' => $rq[0][4]
 
 
 	);
@@ -494,7 +567,15 @@ function allocate_fund_validate($form,&$form_state){
 }
 
 function allocate_fund_submit($form,&$form_state){
-	
+
+if(isset($form_state['values']['fund_allocated'])&&isset($form_state['values']['location'])&&isset($form_state['values']['datetime']))
+{
+	$var=1;
+}else{
+	$var=0;
+}
+
+
 $id1=$form_state['values']['id'];
 	  $num_updated = db_update('reilef_fund')
   ->fields(array(
@@ -504,7 +585,7 @@ $id1=$form_state['values']['id'];
         'mobileno' => $form_state['values']['mobileno'],
         'description'=>$form_state['values']['description'],
 		'fund_allocated'=>$form_state['values']['fund_allocated'],
-    
+		'check_status'=>$var
   ))
   ->condition('id', $id1)
   ->execute();
@@ -520,28 +601,44 @@ function Relief_form($form,&$form_state){
 	 $form['link']['#prefix'] = '<a href="'.$base_url.'/fund_results">Check Results</a>';          
      
 	}
-	$form['link1']['#prefix'] = '<a href="'.$base_url.'/verifyaccount">Verify Account</a>';  
-$form['link2']['#prefix'] = '<a href="'.$base_url.'/checkstatus">Check Status</a>';	
+	$form['link1']['#prefix'] = '<div class="relief-button">
+    <a href="'.$base_url.'/verifyaccount" class="relief-left">Verify Account</a>
+<a href="'.$base_url.'/checkstatus" class="relief-right">Check Status</a>
+    </div>';  
+	
 	$form['name']=array(
 	'#title'=>t('Name'), //description of form elements, here t function is for transalation of language
 	'#type'=>'textfield',
 	'#required'=>TRUE,
 	'#size'=>60,
 	'#maxlength'=>100,
+	'#field_prefix'=>'<div class="input-group"><span class="input-group-addon" id="basic-addon1"><i class="fa fa-user-circle" aria-hidden="true"></i></span>',
+	'#field_suffix'=>'</div>',
+	'#attributes' => array('class' => array('form-control')),
+
 	);
+	 
 	$form['father_name']=array(
 	'#title'=>"Father's Name",
 	'#type'=>'textfield',
 	'#size'=>60,
+	'#field_prefix'=>'<div class="input-group"><span class="input-group-addon" id="basic-addon1"><i class="fa fa-user-circle-o" aria-hidden="true"></i></span>',
+	'#field_suffix'=>'</div>',
+	'#attributes' => array('class' => array('form-control')),
 	'#maxlength'=>60,
 	'#required'=>TRUE,
 	);
+	
 	$form['mother_name']=array(
 	'#title'=>"Mother's Name",
 	'#type'=>'textfield',
 	'#size'=>60,
 	'#maxlength'=>60,
 	'#required'=>TRUE,
+	'#field_prefix'=>'<div class="input-group"><span class="input-group-addon" id="basic-addon1"><i class="fa fa-user-circle" aria-hidden="true"></i></span>',
+	'#field_suffix'=>'</div>',
+	'#attributes' => array('class' => array('form-control')),
+	
 	);
 	$form['district']=array(
 	'#title'=>"District",
@@ -549,6 +646,10 @@ $form['link2']['#prefix'] = '<a href="'.$base_url.'/checkstatus">Check Status</a
 	'#size'=>60,
 	'#maxlength'=>60,
 	'#required'=>TRUE,
+	'#field_prefix'=>'<div class="input-group"><span class="input-group-addon" id="basic-addon1"><i class="fa fa-location-arrow" aria-hidden="true"></i></span>',
+	'#field_suffix'=>'</div>',
+	'#attributes' => array('class' => array('form-control')),
+
 	);
 
 	$form['block']=array(
@@ -557,6 +658,10 @@ $form['link2']['#prefix'] = '<a href="'.$base_url.'/checkstatus">Check Status</a
 	'#size'=>60,
 	'#maxlength'=>60,
 	'#required'=>TRUE,
+	'#field_prefix'=>'<div class="input-group"><span class="input-group-addon" id="basic-addon1"><i class="fa fa-map-marker" aria-hidden="true"></i></span>',
+	'#field_suffix'=>'</div>',
+	'#attributes' => array('class' => array('form-control')),
+
 	);
 	
 		
@@ -568,6 +673,10 @@ $form['link2']['#prefix'] = '<a href="'.$base_url.'/checkstatus">Check Status</a
 	'#required'=>TRUE,
 	'#size'=>60,
 	'#maxlength'=>10,
+	'#field_prefix'=>'<div class="input-group"><span class="input-group-addon" id="basic-addon1"><i class="fa fa-mobile-phone" aria-hidden="true"></i></span>',
+	'#field_suffix'=>'</div>',
+	'#attributes' => array('class' => array('form-control')),
+
 	
 	);
 	
@@ -575,9 +684,15 @@ $form['link2']['#prefix'] = '<a href="'.$base_url.'/checkstatus">Check Status</a
        '#type' => 'textarea',
        '#title' => t('Description'),
 		'#size'=>560,
+		'#field_prefix'=>'<div class="input-group"><span class="input-group-addon" id="basic-addon1"><i class="fa fa-sticky-note" aria-hidden="true"></i></span>',
+	'#field_suffix'=>'</div>',
+	'#attributes' => array('class' => array('form-control')),
+
+		
    );
    
-  
+   
+  $form['link2']['#prefix'] = '<div class="add-relief-att">';
    $form['attachments'] = array(
     '#title' => t('Add Attachment'),
 	
@@ -587,10 +702,13 @@ $form['link2']['#prefix'] = '<a href="'.$base_url.'/checkstatus">Check Status</a
     '#upload_location' => 'public://',
 	"#upload_validators"  => array("file_validate_extensions" => array("pdf docx")),
   );
+    $form['link3']['#suffix'] = '</div>';
+   $form['link4']['#prefix'] = '<div class="add-relief-att-submit">';
 	$form['submit']=array(
 	'#type'=>'submit', 
 	'#value'=>'save',
 	);
+	   $form['link5']['#suffix'] = '</div>';
 	return $form;
 }
 
@@ -753,7 +871,7 @@ $i=$wa*4+1;
 			$file=file_create_url($files);
 		}
 		
-		$date=date('d/m/y',strtotime($a->check_date));
+		$date=isset($a->check_date)?date('d/m/y',strtotime($a->check_date)):'';
 $row[]=array(		
 		$i,
 		$a->name,
