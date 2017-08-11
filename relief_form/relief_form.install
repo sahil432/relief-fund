@@ -44,11 +44,6 @@
 					'not null' => TRUE
 				),
 				
-				'fid' => array(
-					'type' => 'int',
-					'not null' => TRUE
-				),
-				
 				'fund_allocated' => array(
 					'type' => 'varchar',
 					'length' => 100,
@@ -87,6 +82,29 @@
 			'unique keys' => array(
     'mobileno' => array('mobileno'),
   ),
+			'primary key' => array('id'),
+		);
+		
+		
+		$schema['relief_file_id'] = array(
+			'description'=>t('table created for relief fund files'),
+			'fields' => array(
+				'id'=>array(
+					'type'=>'serial',
+					'not null'=>TRUE
+				),
+				'user_id'=>array(
+					'type'=>'int',
+					'not null'=>TRUE
+				),
+				
+				'file_fid' => array(
+					'type' => 'int',
+					'not null' => TRUE
+				),
+				),
+		
+  
 			'primary key' => array('id'),
 		);
 		return $schema;

@@ -297,7 +297,9 @@ function verify_account_submit($form,&$form_state)
 
 function verify_otp($form,&$form_state)
 {
-	global $base_url;
+	 
+	
+		 global $base_url;
 
 	 $form['link']['#prefix'] = '<a href="'.$base_url.'/relief_fund" class="backn">Back</a>';          
      
@@ -329,6 +331,8 @@ function verify_otp($form,&$form_state)
 	
 		elseif(!empty($name))
 		{
+			
+			if(empty($result[0]->otp)){
 			$otp=$_SERVER['REQUEST_TIME'];
 			
 			
@@ -338,9 +342,9 @@ function verify_otp($form,&$form_state)
        ))
   ->condition('mobileno',$mobileNumber ,'=')
   ->execute();
+			}
 			
-			
-			//$authKey = "165353A7kIymL559690490";
+			$authKey = "165353A7kIymL559690490";
 
 //Multiple mobiles numbers separated by comma
 
@@ -349,7 +353,7 @@ function verify_otp($form,&$form_state)
 $senderId = "CMOJKH";
 
 //Your message to send, Add URL encoding here.
-$message = urlencode("".$otp." is your CMO Jharkhand Verification Code ");
+$message = urlencode("".isset($otp) ? $otp ." is your CMO Jharkhand Verification Code " :$result[0]->otp." is your CMO Jharkhand Verification Code ");
 
 //Define route 
 $route = 4;
@@ -435,8 +439,10 @@ function verify_otp_validate($form,&$form_state){
 }
 function verify_otp_submit($form,&$form_state)
 {
-	 $mobile_number=arg(1);
-	 $otp=$form_state['values']['otp'];
+	global $base_url;
+	  $mobile_number=arg(1);
+	
+	 echo $otp=$form_state['values']['otp'];
 	 
 	 $result = db_select('reilef_fund', 'n')
             
@@ -445,23 +451,25 @@ function verify_otp_submit($form,&$form_state)
             ->execute()
 			->fetchAll();
 		
-	
-	//print_r($result);
-	
+
 	if($result[0]->otp == $otp){
-		$num_updated = db_update('reilef_fund')
+	 
+	$num_updated = db_update('reilef_fund')
   ->fields(array(
     'status' => 1
        ))
   ->condition('mobileno',$mobile_number ,'=')
   ->execute();
-	drupal_set_message("Thanks For Verification Now you can Track your Status");
+	$url=$base_url.'/checkstatus';
+		
+	 drupal_goto($url, array('external' => TRUE));
 			}
 	else{
 		
 		drupal_set_message("Invalid OTP",'error');
 	}
 }
+
 function allocate_fund($form,&$form_state){
  $a=arg(1);
 	$result = db_query("SELECT * FROM {reilef_fund} where id=$a");
@@ -597,6 +605,8 @@ $form_state['redirect'] = 'fund_results';
 function Relief_form($form,&$form_state){
 	global $user;
 	global $base_url;
+	
+$form['#attributes'] = array('class' => array('myfrelief'));
 	if($user->uid ==1){
 	 $form['link']['#prefix'] = '<a href="'.$base_url.'/fund_results">Check Results</a>';          
      
@@ -693,26 +703,88 @@ function Relief_form($form,&$form_state){
    
    
   $form['link2']['#prefix'] = '<div class="add-relief-att">';
-   $form['attachments'] = array(
-    '#title' => t('Add Attachment'),
+   
+     
+	 
+	 
+	 
+	 
+
+ 
+	 if (empty($form_state['storage']['file'])) {
+       $form_state['storage']['file'] = 1;
+    }
+ 
+  $form['file'] = array(
+    '#type' => 'container',
+    '#tree' => TRUE,
+    '#prefix' => '<div id="file">',
+    '#suffix' => '</div>',
+  );
+	
+  if ($form_state['storage']['file']) {
+    for ($i = 0; $i < $form_state['storage']['file']; $i++) {
+		
+      $form['file'][$i] = array(
+        '#type' => 'fieldset',
+        '#tree' => TRUE,
+      );
+
+      $form['file'][$i]['attachments'] = array(
+        '#title' => t('Add Attachment'),
 	
     '#type' => 'managed_file',
-   
+  
     '#progress_indicator' => 'bar',
     '#upload_location' => 'public://',
 	"#upload_validators"  => array("file_validate_extensions" => array("pdf docx")),
+      );
+     
+	}
+	
+  }
+
+  $form['add_participant'] = array(
+    '#type' => 'button',
+    '#value' => t('Add More'),
+    '#href' => '',
+	 
+	 '#limit_validation_errors' => array(),
+	 '#attributes' => array('multiple' => 'multiple'),
+    '#ajax' => array(
+    'callback' => 'custom_registration_ajax_add_participant',
+    'wrapper' => 'file',
+   ),
   );
-    $form['link3']['#suffix'] = '</div>';
+
+	 
+	 
+	 
+	 
+	 
+	 
+	
+	
+	$form['link3']['#suffix'] = '</div>';
    $form['link4']['#prefix'] = '<div class="add-relief-att-submit">';
 	$form['submit']=array(
 	'#type'=>'submit', 
 	'#value'=>'save',
 	);
+	
+	
 	   $form['link5']['#suffix'] = '</div>';
+	     
+		$form_state['storage']['file']++;
+	
+		
 	return $form;
 }
-
-
+ 
+function custom_registration_ajax_add_participant($form, $form_state) {
+	
+  return $form['file'];
+}
 function Relief_form_validate($form,&$form_state){
 	$name = $form_state['values']['name'];
 	$father=$form_state['values']['father_name'];
@@ -744,6 +816,20 @@ if (!preg_match("/^[a-zA-Z ]*$/",$father)) {
 
 function Relief_form_submit($form,&$form_state){
 	
+$arr=array();
+$i=0;
+	foreach($form_state['values']['file'] as $files){
+
+		if($files['attachments'] != 0)
+		{
+			$arr[$i]= $files['attachments'];
+			
+			
+		}
+	$i++;
+	}
+	
+	
 	$result = db_select('reilef_fund', 'n')
             
 			->condition('mobileno',$form_state['values']['mobileno'] ,'=')
@@ -758,12 +844,7 @@ if($num_of_results > 0){
 }
 else{
 	
-	if(!empty($form_state['values']['attachments'])){
-	$file=file_load($form_state['values']['attachments']);
-	$file->status = FILE_STATUS_PERMANENT;
-        file_save($file);
-		file_usage_add($file, 'relief_form', 'view', $form_state['values']['attachments']);
-	}
+	
 		db_insert('reilef_fund')
       ->fields(array(
         'name' => $form_state['values']['name'],
@@ -773,10 +854,27 @@ else{
 		'block' => $form_state['values']['block'],
         'mobileno' => trim($form_state['values']['mobileno']),
         'description'=>$form_state['values']['description'],
-		'fid'=>$form_state['values']['attachments'],
 		'otp'=> $otp
       ))->execute();
-
+if(!empty($arr)){
+	 $last_id = db_query('SELECT MAX(id) FROM {reilef_fund}')->fetchField();
+		
+		foreach ($arr as $ids){
+			$file=file_load($ids);
+	$file->status = FILE_STATUS_PERMANENT;
+        file_save($file);
+		file_usage_add($file, 'relief_form', 'view', $ids);
+		db_insert('relief_file_id')
+      ->fields(array(
+        'user_id' => $last_id,
+		'file_fid'=>$ids,
+       
+      ))->execute();
+		
+		}
+		
+	
+	}
 	  drupal_set_message("successfully saved details.");
 $form_state['redirect'] = 'verifyotp/'.$form_state['values']['mobileno'];
 }
@@ -798,14 +896,14 @@ function fund_result(){
 
 
 global $base_url;
-	$b=array('S No.','Name','Mobile','Block','District','Fund Allocate','Verification Status','Check Collect Date','Check Collect Location  ','Fund Status','Attachment','Action');
+	$b=array('S No.','Name','Mobile','Block','District','Fund Allocate','Verification Status','Check Collect Date','Check Collect Location  ','Fund Status','Attachments','Action');
 	$row=array();
 
 
 $mobilee=$_GET['mobile'];
 if(empty($mobilee)){
 	$query = db_select('reilef_fund', 'n')
-              
+            
             ->extend('PagerDefault')    
                 ->limit(40)                
             ->extend('TableSort')        
@@ -820,11 +918,13 @@ if(empty($mobilee)){
 				'check_date',
 				'location',
                 'status',
-				'fid',
 				'check_status'
             )); 
 	$result = $query
             ->execute();
+			
+			
+			
 }else{
 	
 	
@@ -836,6 +936,7 @@ if(empty($mobilee)){
                 ->limit(40)                
             ->extend('TableSort')        
                 ->orderByHeader($b)
+			
             ->fields ('n', array (
                 'id',
                 'name',
@@ -846,7 +947,7 @@ if(empty($mobilee)){
 				'check_date',
 				'location',
                 'status',
-				'fid',
+
 				'check_status'
             ))
 			->condition('mobileno',$mobilee,'='); 
@@ -854,13 +955,37 @@ if(empty($mobilee)){
             ->execute();
 }
 	
-	
 
 			$wa=$_GET['page'];
 	
 $i=$wa*4+1;
 	foreach($result as $a){
-		if($a->fid == 0){
+		$result1 = db_select('relief_file_id', 'n')
+            ->fields('n')
+			->condition('user_id',$a->id,'=')
+            ->execute();
+   $num_of_results = $result1->rowCount();
+   if($num_of_results > 0){
+	$recordsa=$result1->fetchAll();
+	$j=0;
+   foreach($recordsa as $q)
+   {
+	   
+
+	   $file1=file_load($q->file_fid);
+			$files=$file1->uri;
+			$file[$a->id][$j]=file_create_url($files);
+			$j++;
+   }
+   
+   }
+   else{
+	   $file[$a->id][0]='NO file Attached';
+   }
+   
+	
+	
+		/*  if($a->fid == 0){
 			
 			$file='NO file Attached';
 			
@@ -869,9 +994,10 @@ $i=$wa*4+1;
 			$file1=file_load($a->fid);
 			$files=$file1->uri;
 			$file=file_create_url($files);
-		}
+		} 
+		 */
 		
-		$date=isset($a->check_date)?date('d/m/y',strtotime($a->check_date)):'';
+		 $date=isset($a->check_date)?date('d/m/y',strtotime($a->check_date)):'';
 $row[]=array(		
 		$i,
 		$a->name,
@@ -883,15 +1009,17 @@ $row[]=array(
 		$date,
 		$a->location,
 		$a->check_status == 0 ? "Not Processed" : "Fund Allocated" ,
-		$a->fid != 0 ? "<a href='{$file}' target='_blank'>" . t('Download') . "</a>" : $file,
+		$num_of_results > 0 ? "<a href='{$file[$a->id][0]}' target='_blank'>" . t('Download') . "</a>" : $file[$a->id][0],
 		"<a href='allocate_fund/{$a->id}'>" . t('Allocate') . "</a>"
-			);
+			); 
 
+	$i++;
 	
+}
 		
 
-$i++;
-	}
+
+	
 	$html= '<form class="mobform" action="" method="get">Enter Your Mobile Number :-
 	<input type="number" name="mobile" id ="mobile_no" oninput="javascript: if (this.value.length > this.maxLength) this.value = this.value.slice(0, this.maxLength);" type = "number" maxlength = "10">
 	
