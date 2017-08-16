@@ -69,6 +69,20 @@ $row[]=array(
 }
 
  */
+ 
+ function relief_form_form_alter(&$form, &$form_state,$form_id) {
+  switch ($form_id) {
+    case 'user_register_form':
+          $form['#submit'][] = 'custom_user_register_submit';
+      break;
+  }
+}
+
+function custom_user_register_submit($form, &$form_state) {
+  $form_state['redirect'] = 'relief_fund';
+}
+ 
+ 
 
 function relief_form_permission() {
   return array(
@@ -99,6 +113,13 @@ function relief_form_menu(){
 	'page arguments'=>array('Relief_form'), 
 	'access arguments'=>array('Relief Fund')
 	);
+	$items['show_attachments']=array(    
+	'title'=>'Attachments',   
+	'page callback'=>array('show_attachments'),  
+	'access arguments'=>array('permission for relief fund results')
+	);
+	
+	
 	
 	$items['checkstatus']=array(    
 	'title'=>'Check Status ',   
@@ -145,6 +166,52 @@ $items['verifyaccount']=array(
 	
 	
 	return $items;
+}
+function show_attachments()
+{ $id=arg(1);
+	
+	$result1 = db_select('relief_file_id', 'n')
+            ->fields('n')
+			->condition('relief_record_id',$id,'=')
+            ->execute();
+   $num_of_results = $result1->rowCount();
+   if($num_of_results > 0){
+	$recordsa=$result1->fetchAll();
+	$j=0;
+   foreach($recordsa as $q)
+   {
+	   
+
+	   $file1=file_load($q->file_fid);
+			$files=$file1->uri;
+			$file[$j]=file_create_url($files);
+			$j++;
+   }
+    
+	
+
+$html='<div class="attachment-sectm"><ul>';
+foreach($file as $arr) {
+	$a=explode(".",$arr);
+	$aa=explode("/",$arr);
+	$b=end($a);
+	$ba=end($aa);
+	$bb=str_replace("%20"," ",$ba);
+	
+	if($b == 'docx'){$class="fa fa-file-text-o";}elseif($b=='pdf'){$class="fa fa-file-pdf-o";}
+	
+ $html .= '<li>'.$bb.'<div class="atsection"><a href="'.$arr.'">Download <i class="fa fa-download" aria-hidden="true"></i></a><span><i class="'.$class.'" aria-hidden="true"></i></span></div></li>';
+}
+$html .= '</ul></div>';
+   
+   }
+   else{
+	   $html='<div class="attachment-sectm">NO file Attached</div>';
+   }
+
+  
+
+   return $html;
 }
 function status_check()
 {$mobile=arg(1);
@@ -610,11 +677,29 @@ $form['#attributes'] = array('class' => array('myfrelief'));
 	if($user->uid ==1){
 	 $form['link']['#prefix'] = '<a href="'.$base_url.'/fund_results">Check Results</a>';          
      
-	}
+	}else{
+	$result = db_select('reilef_fund', 'n')
+            
+			->condition('uid',$user->uid,'=')
+			->fields('n')
+            ->execute();
+   $num_of_results = $result->rowCount();
+   if($num_of_results > 0){
+	   $fetch=$result->fetchAll();
+	   
+	   if($fetch[0]->status == 0){
 	$form['link1']['#prefix'] = '<div class="relief-button">
-    <a href="'.$base_url.'/verifyaccount" class="relief-left">Verify Account</a>
-<a href="'.$base_url.'/checkstatus" class="relief-right">Check Status</a>
+    <a href="'.$base_url.'/verifyaccount" class="relief-left">Verify Account</a>';
+	   }
+	
+	$form['link20']['#prefix'] ='<a href="'.$base_url.'/checkstatus" class="relief-right">Check Status</a>
     </div>';  
+   }
+
+	
+	
+if($num_of_results == 0){
+	
 	
 	$form['name']=array(
 	'#title'=>t('Name'), //description of form elements, here t function is for transalation of language
@@ -737,7 +822,7 @@ $form['#attributes'] = array('class' => array('myfrelief'));
   
     '#progress_indicator' => 'bar',
     '#upload_location' => 'public://',
-	"#upload_validators"  => array("file_validate_extensions" => array("pdf docx")),
+	"#upload_validators"  => array("file_validate_extensions" => array("pdf docx doc rtf")),
       );
      
 	}
@@ -776,8 +861,8 @@ $form['#attributes'] = array('class' => array('myfrelief'));
 	   $form['link5']['#suffix'] = '</div>';
 	     
 		$form_state['storage']['file']++;
-	
-		
+}
+	}	
 	return $form;
 }
  
@@ -815,7 +900,7 @@ if (!preg_match("/^[a-zA-Z ]*$/",$father)) {
 }
 
 function Relief_form_submit($form,&$form_state){
-	
+	global $user;
 $arr=array();
 $i=0;
 	foreach($form_state['values']['file'] as $files){
@@ -854,7 +939,9 @@ else{
 		'block' => $form_state['values']['block'],
         'mobileno' => trim($form_state['values']['mobileno']),
         'description'=>$form_state['values']['description'],
-		'otp'=> $otp
+		'otp'=> $otp,
+		'uid'=>$user->uid
+		
       ))->execute();
 if(!empty($arr)){
 	 $last_id = db_query('SELECT MAX(id) FROM {reilef_fund}')->fetchField();
@@ -866,7 +953,7 @@ if(!empty($arr)){
 		file_usage_add($file, 'relief_form', 'view', $ids);
 		db_insert('relief_file_id')
       ->fields(array(
-        'user_id' => $last_id,
+        'relief_record_id' => $last_id,
 		'file_fid'=>$ids,
        
       ))->execute();
@@ -962,7 +1049,7 @@ $i=$wa*4+1;
 	foreach($result as $a){
 		$result1 = db_select('relief_file_id', 'n')
             ->fields('n')
-			->condition('user_id',$a->id,'=')
+			->condition('relief_record_id',$a->id,'=')
             ->execute();
    $num_of_results = $result1->rowCount();
    if($num_of_results > 0){
@@ -1009,7 +1096,8 @@ $row[]=array(
 		$date,
 		$a->location,
 		$a->check_status == 0 ? "Not Processed" : "Fund Allocated" ,
-		$num_of_results > 0 ? "<a href='{$file[$a->id][0]}' target='_blank'>" . t('Download') . "</a>" : $file[$a->id][0],
+$num_of_results > 0 ? "<a href='show_attachments/{$a->id}'>" . t('Show Attachments') . "</a>"  : $file[$a->id][0],
+		
 		"<a href='allocate_fund/{$a->id}'>" . t('Allocate') . "</a>"
 			); 
 

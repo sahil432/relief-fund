@@ -77,6 +77,10 @@
 					'length' => 100,
 					'not null' => False
 				),
+				'uid'=>array(
+					'type'=>'int',
+					'not null'=>TRUE
+				),
 				
 			),
 			'unique keys' => array(
@@ -93,7 +97,7 @@
 					'type'=>'serial',
 					'not null'=>TRUE
 				),
-				'user_id'=>array(
+				'relief_record_id'=>array(
 					'type'=>'int',
 					'not null'=>TRUE
 				),
